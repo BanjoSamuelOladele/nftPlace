@@ -1,5 +1,5 @@
 import { SUPPORTED_CHAIN } from "../connection";
-import { getNFTContract} from "../constants/contracts";
+import { getProposalsContract } from "../constants/contracts";
 import { getProvider } from "../constants/providers";
 
 export const isSupportedChain = (chainId) =>
@@ -10,5 +10,5 @@ export const getReadWriteBallotContract = async (provider) => {
 
     const signer = await readWriteProvider.getSigner();
 
-    return getNFTContract(signer);
+    return getProposalsContract(signer);
 };
