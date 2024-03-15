@@ -1,45 +1,40 @@
 import { useCallback } from "react";
-import { isSupportedChain } from "../utils";
+import { useWeb3ModalAccount, useWeb3ModalProvider } from "@web3modal/ethers/react";
 import { getProvider } from "../constants/providers";
-import {
-    useWeb3ModalAccount,
-    useWeb3ModalProvider,
-} from "@web3modal/ethers/react";
-import { getNFTContract } from "../constants/contracts";
+import { getNFTsContract } from "../constants/contracts.js";
+import { toast } from "react-toastify"
+import { ethers } from "ethers";
 
 const useMint = () => {
-    const { chainId } = useWeb3ModalAccount();
     const { walletProvider } = useWeb3ModalProvider();
+    const { address } = useWeb3ModalAccount();
 
-    return useCallback(
-        async (address, tokenId) => {
-            if (!isSupportedChain(chainId))
-                return console.error("Wrong network");
-            const readWriteProvider = getProvider(walletProvider);
-            const signer = await readWriteProvider.getSigner();
+    return useCallback(async (id) => {
+        const readWriteProvider = getProvider(walletProvider);
+        const signer = await readWriteProvider.getSigner();
+        const amount = ethers.parseEther("0.01")
+        console.log(amount);
 
-            const contract = getNFTContract(signer);
+        const contract = getNFTsContract(signer);
 
-            try {
-                const transaction = await contract.safeMint(address, tokenId, {value:"10000000000000000"});
-                console.log("transaction: ", transaction);
-                const receipt = await transaction.wait();
+        try {
+            const transaction = await contract.safeMint(address, id, {
+                value: amount
+            });
+            console.log("transaction: ", transaction);
+            const receipt = await transaction.wait();
 
-                console.log("receipt: ", receipt);
+            console.log("receipt: ", receipt);
 
-                if (receipt.status) {
-                    return console.log("Mint successfull");
-                }
-
-                console.log("Failed to mint");
-            } catch (error) {
-                console.log(error);
-
-                console.error("error: ", error);
+            if (receipt.status) {
+                return toast.success("Minted successfully!");
             }
-        },
-        [chainId, walletProvider]
-    );
-};
 
-export default useMint;
+            toast.error("Minting failed!");
+        } catch (error) {
+            console.log("error :", error);
+        }
+    }, [address, walletProvider]);
+}
+
+export default useMint

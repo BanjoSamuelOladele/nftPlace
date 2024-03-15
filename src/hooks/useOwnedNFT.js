@@ -1,67 +1,47 @@
 import { ethers } from "ethers";
-import erc721 from "../constants/erc721.json";
-import multicallAbi from "../constants/multicall.json";
-import { readOnlyProvider } from "../constants/providers";
-import { useEffect, useMemo, useState } from "react";
-import { useWeb3ModalAccount } from "@web3modal/ethers/react";
+import { useCallback, useEffect, useState } from "react";
+import { wssProvider } from "../constants/providers";
+// import erc721 from "../constants/erc721.json";
 
-const useOwnedNFT = () => {
-	const { address } = useWeb3ModalAccount();
-	const [data, setData] = useState([]);
-	const [addresses, setAddresses] = useState([]);
 
-	const tokenIDs = useMemo(
-		() => [...Array.from({ length: 30 })].map((_, index) => index),
-		[]
-	);
+const useNewOwner = () => {
+    const [address, setAddress] = useState("");
+    // const itf = useMemo(() => new ethers.Interface(erc721), []);
 
-	useEffect(() => {
-		(async () => {
-			const itf = new ethers.Interface(erc721);
-			const calls = tokenIDs.map((x) => ({
-				target: import.meta.env.VITE_contract_address,
-				callData: itf.encodeFunctionData("ownerOf", [x]),
-			}));
 
-			const multicall = new ethers.Contract(
-				import.meta.env.VITE_multicall_address,
-				multicallAbi,
-				readOnlyProvider
-			);
+    const eventListerner = useCallback((log) => {
+        console.log("testing event: ", toString(log.topics[2]));
 
-			const callResults = await multicall.tryAggregate.staticCall(
-				false,
-				calls
-			);
+        const de = ethers.AbiCoder.defaultAbiCoder().decode[["address"], String(log.topics[2])]
+        // const decodedResponses = itf.decodeEventLog("Transfer", toString(log.topics[2]))
+        console.log("decodedResponses: ", de);
+        // console.log("another", decodedResponses);
+        setAddress("")
+    }, []);
 
-			const validResponsesIndex = [];
-			const validResponses = callResults.filter((x, i) => {
-				if (x[0] === true) {
-					validResponsesIndex.push(i);
-					return true;
-				}
-				return false;
-			});
 
-			const decodedResponses = validResponses.map((x) =>
-				itf.decodeFunctionResult("ownerOf", x[1])
-			);
+    useEffect(() => {
+        const filter = {
+            address: import.meta.env.VITE_contract_address,
+            topics: [ethers.id("Transfer(address,address,uint256)")],
+        };
+        wssProvider
+            .getLogs({ ...filter, fromBlock: 5465128 })
+            // eslint-disable-next-line no-unused-vars
+            .then((events) => {
+                console.log("events: ", events);
+            });
 
-			const ownedTokenIds = [];
-			const addressArray = [];
+        const wssProvider2 = new ethers.WebSocketProvider(
+            import.meta.env.VITE_wss_rpc_url
+        );
+        wssProvider2.on(filter, eventListerner);
 
-			decodedResponses.forEach((addr, index) => {
-				ownedTokenIds.push(validResponsesIndex[index]);
-				{addr === undefined ? addressArray.push(ethers.ZeroAddress):addressArray.push(addr)}
+        return () => wssProvider2.off(filter, eventListerner);
+    }, [eventListerner]);
 
-			});
 
-			setData(ownedTokenIds);
-			setAddresses(addressArray)
-		})();
-	}, [address, tokenIDs]);
-
-	return [data, addresses]
+    return address;
 };
 
-export default useOwnedNFT;
+export default useNewOwner;

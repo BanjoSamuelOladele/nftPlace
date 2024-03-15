@@ -1,8 +1,11 @@
 import { useEffect, useState } from "react";
+import useNewOwner from "./useNewOwner";
 
 const useCollections = () => {
     // eslint-disable-next-line no-unused-vars
     const [data, setData] = useState([]);
+    const eventListener = useNewOwner()
+
 
     useEffect(() => {
         (async () => {
@@ -10,11 +13,12 @@ const useCollections = () => {
                 (_, index) => index
             );
 
-            const promises = tokenIDs.map((x) =>
-                fetch(`${import.meta.env.VITE_token_base_url}${x}`)
+            const promises = tokenIDs.map((index) =>
+                fetch(`${import.meta.env.VITE_token_base_url}${index}`)
             );
 
             const tokensMetadataResponse = await Promise.all(promises);
+
 
             const tokensMetadataJson = [];
 
@@ -25,7 +29,7 @@ const useCollections = () => {
 
             setData(tokensMetadataJson);
         })();
-    }, []);
+    }, [eventListener]);
 
     return data;
 };

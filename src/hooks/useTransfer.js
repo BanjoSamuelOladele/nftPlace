@@ -1,46 +1,36 @@
 import { useCallback } from "react";
-import { isSupportedChain } from "../utils";
+import { useWeb3ModalAccount, useWeb3ModalProvider } from "@web3modal/ethers/react";
 import { getProvider } from "../constants/providers";
-import {
-    useWeb3ModalAccount,
-    useWeb3ModalProvider,
-} from "@web3modal/ethers/react";
-import { getNFTContract } from "../constants/contracts";
+import { getNFTsContract } from "../constants/contracts.js";
+import { toast } from "react-toastify"
 
 const useTransfer = () => {
-    const { chainId } = useWeb3ModalAccount();
     const { walletProvider } = useWeb3ModalProvider();
-    const { address } =  useWeb3ModalAccount()
-    
-    return useCallback(
-        async ( addressTo, tokenId) => {
-            if (!isSupportedChain(chainId))
-                return console.error("Wrong network");
-            const readWriteProvider = getProvider(walletProvider);
-            const signer = await readWriteProvider.getSigner();
+    const { address } = useWeb3ModalAccount();
 
-            const contract = getNFTContract(signer);
 
-            try {
-                const transaction = await contract.transferFrom(address, addressTo, tokenId);
-                console.log("transaction: ", transaction);
-                const receipt = await transaction.wait();
+    return useCallback(async (addressTo, id) => {
+        const readWriteProvider = getProvider(walletProvider);
+        const signer = await readWriteProvider.getSigner();
 
-                console.log("receipt: ", receipt);
+        const contract = getNFTsContract(signer);
 
-                if (receipt.status) {
-                    return console.log("Transfer successfull");
-                }
+        try {
+            const transaction = await contract.transferFrom(address, addressTo, id);
+            console.log("transaction: ", transaction);
+            const receipt = await transaction.wait();
 
-                console.log("Failed to Transfer");
-            } catch (error) {
-                console.log(error);
+            console.log("receipt: ", receipt);
 
-                console.error("error: ", error);
+            if (receipt.status) {
+                return toast.success("transfer successfull!");
             }
-        },
-        [chainId, walletProvider]
-    );
-};
 
-export default useTransfer;
+            toast.error("transfer failed!");
+        } catch (error) {
+            console.log("error :", error);
+        }
+    }, [address, walletProvider]);
+}
+
+export default useTransfer
